@@ -7,7 +7,7 @@ pip3 install -r requirements.txt
 cd devman_async_python_connection_to_chat/
 python main.py
 ```
-Необязательные аргументы:
+Необязательные аргументы:  
 `--host` IP или URL адрес для подключения.  
 `--port` Порт для подключения.  
 `--history` Путь к файлу с историей переписки.  
@@ -26,7 +26,7 @@ pip3 install -r requirements.txt
 cd devman_async_python_connection_to_chat/
 python main.py
 ```
-Optional Arguments:
+Optional Arguments:  
 `--host` IP or URL address to connection.  
 `--port` Connection port.  
 `--history` The path to the file with the history of the correspondence.  
