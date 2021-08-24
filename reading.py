@@ -4,12 +4,9 @@ import datetime
 import argparse
 
 
-async def chat_reader(args):
+async def reader(args):
     while True:
-        reader, writer = await asyncio.open_connection(
-            args.host,
-            args.port,
-        )
+        reader, _ = await asyncio.open_connection(args.host, args.port)
         data = await reader.readline()
         datetime_now = datetime.datetime.now().strftime('%d.%m.%Y %H:%M')
         message = f'[{datetime_now}] {data.decode()}'
@@ -28,4 +25,4 @@ if __name__ == '__main__':
     parser.add_argument('--history', type=str, default='./minechat.history',
         help='Path to the file with the history of correspondence.')
     args = parser.parse_args()
-    asyncio.run(chat_reader(args))
+    asyncio.run(reader(args))
