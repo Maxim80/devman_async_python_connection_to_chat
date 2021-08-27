@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import asyncio
 import argparse
 import logging
+import json
 import os
 
 
@@ -9,13 +10,17 @@ async def sender(args):
     reader, writer = await asyncio.open_connection(args.host, args.port)
 
     data = await reader.readline()
-    logger.debug()
+    log_msg = data.decode()
+    logger.debug(log_msg)
 
     writer.write(f'{args.token}\n'.encode())
     await writer.drain()
 
     data = await reader.readline()
-    logger.debug(data.decode())
+    log_msg = data.decode()
+    if json.loads(log_msg) is None:
+        log_msg = 'Неизвестный токен. Проверьте его или зарегистрируйте заново.'
+    logger.debug(log_msg)
 
     writer.write(f'{args.message}\n\n'.encode())
     await writer.drain()
