@@ -9,58 +9,67 @@ import os
 
 async def read_data(reader):
     data = await reader.readline()
-    return data.decode()
+    data = data.decode()
+    logger.debug(data)
+    return data
 
 
-async def reg_new_user(host, port, nickname):
+async def register(host, port, nickname):
     try:
         reader, writer = await asyncio.open_connection(host, port)
-        log_msg = await read_data(reader)
-        logger.debug(log_msg)
+
+        await read_data(reader)
 
         writer.write('\n'.encode())
         await writer.drain()
 
-        log_msg = await read_data(reader)
-        logger.debug(log_msg)
+        await read_data(reader)
 
         writer.write(f'{nickname}\n'.encode())
         await writer.drain()
 
-        access_json = await read_data(reader)
-        logger.debug(access_json)
+        access_data = await read_data(reader)
         async with aiofiles.open('.minechat_access', 'w') as f:
-            await f.write(access_json)
+            await f.write(access_data)
 
     finally:
         writer.close()
         await writer.wait_closed()
+
+
+async def authorise(reader, writer):
+    await read_data(reader)
+
+    async with aiofiles.open('.minechat_access', 'r') as f:
+        data = await f.read()
+
+    access_token = json.loads(data)['account_hash']
+
+    writer.write(f'{access_token}\n'.encode())
+    await writer.drain()
+
+    msg = await read_data(reader)
+    if json.loads(msg) is None:
+        print('Неизвестный токен. Проверьте его или зарегистрируйте заново.')
+
+
+async def submit_message(reader, writer, message):
+    writer.write(f'{message}\n\n'.encode())
+    await writer.drain()
 
 
 async def main(args):
     if args.reg:
-        await reg_new_user(args.host, args.port, 'Bax')
-    try:
-        reader, writer = await asyncio.open_connection(args.host, args.port)
+        await register(args.host, args.port, args.reg)
 
-        data = await reader.readline()
-        log_msg = data.decode()
-        logger.debug(log_msg)
-
-        writer.write(f'{args.token}\n'.encode())
-        await writer.drain()
-
-        data = await reader.readline()
-        log_msg = data.decode()
-        if json.loads(log_msg) is None:
-            log_msg = 'Неизвестный токен. Проверьте его или зарегистрируйте заново.'
-        logger.debug(log_msg)
-
-        writer.write(f'{args.message}\n\n'.encode())
-        await writer.drain()
-    finally:
-        writer.close()
-        await writer.wait_closed()
+    if args.message:
+        try:
+            reader, writer = await asyncio.open_connection(args.host, args.port)
+            await authorise(reader, writer)
+            await submit_message(reader, writer, args.message)
+        finally:
+            writer.close()
+            await writer.wait_closed()
 
 
 if __name__ == '__main__':
@@ -71,11 +80,9 @@ if __name__ == '__main__':
         help='IP or URL hosts address for connection.')
     parser.add_argument('--port', type=int, default=5050,
         help='Port for connection.')
-    parser.add_argument('--reg', help='New user registration',
-        action='store_true')
+    parser.add_argument('--message', type=str, help='Message for submit')
+    parser.add_argument('--reg', type=str, help='New user registration name')
     parser.add_argument('--logger', help='Enable logger', action='store_true')
-    parser.add_argument('--message', type=str, help='Message to send to chat.',
-        default='')
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG)
