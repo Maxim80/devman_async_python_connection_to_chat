@@ -63,10 +63,11 @@ async def main(args):
         await register(args.host, args.port, args.reg)
 
     if args.message:
+        message = args.message.replace('\n', '')
         try:
             reader, writer = await asyncio.open_connection(args.host, args.port)
             await authorise(reader, writer)
-            await submit_message(reader, writer, args.message)
+            await submit_message(reader, writer, message)
         finally:
             writer.close()
             await writer.wait_closed()
