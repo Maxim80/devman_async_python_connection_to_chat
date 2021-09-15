@@ -5,7 +5,7 @@ import logging
 import aiofiles
 import json
 import os
-
+import re
 
 async def read_data(reader):
     data = await reader.readline()
@@ -40,8 +40,13 @@ async def register(host, port, nickname):
 async def authorise(reader, writer):
     await read_data(reader)
 
-    async with aiofiles.open('.minechat_access', 'r') as f:
-        data = await f.read()
+    try:
+        async with aiofiles.open('.minechat_access', 'r') as f:
+            data = await f.read()
+
+    except FileNotFoundError:
+        print('Вы не авторизованы. Отправлять сообщения в чат могут только авторизованные пользователи')
+        return
 
     access_token = json.loads(data)['account_hash']
 
@@ -62,28 +67,30 @@ async def main(args):
     if args.reg:
         await register(args.host, args.port, args.reg)
 
-    if args.message:
-        message = args.message.replace('\n', '')
-        try:
-            reader, writer = await asyncio.open_connection(args.host, args.port)
-            await authorise(reader, writer)
-            await submit_message(reader, writer, message)
-        finally:
-            writer.close()
-            await writer.wait_closed()
+    try:
+        reader, writer = await asyncio.open_connection(args.host, args.port)
+        await authorise(reader, writer)
+        message = args.message.replace('\\n', '')
+        await submit_message(reader, writer, message)
+    finally:
+        writer.close()
+        await writer.wait_closed()
 
 
 if __name__ == '__main__':
     load_dotenv()
 
     parser = argparse.ArgumentParser(description='Script to connection to chats')
-    parser.add_argument('--host', type=str, default='minechat.dvmn.org',
+    parser.add_argument('-m', '--message',type=str, help='Message for submit',
+        required=True)
+    parser.add_argument('-H', '--host', type=str, default='minechat.dvmn.org',
         help='IP or URL hosts address for connection.')
-    parser.add_argument('--port', type=int, default=5050,
+    parser.add_argument('-p', '--port', type=int, default=5050,
         help='Port for connection.')
-    parser.add_argument('--message', type=str, help='Message for submit')
-    parser.add_argument('--reg', type=str, help='New user registration name')
-    parser.add_argument('--logger', help='Enable logger', action='store_true')
+    parser.add_argument('-r', '--reg', type=str,
+        help='New user registration name')
+    parser.add_argument('-l', '--logger', help='Enable logger',
+        action='store_true')
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG)
