@@ -6,15 +6,15 @@ import argparse
 
 async def reader(args):
     try:
+        reader, writer = await asyncio.open_connection(args.host, args.port)
         while True:
-            reader, writer = await asyncio.open_connection(args.host, args.port)
-            data = await reader.readline()
+            chat_mesage = await reader.readline()
             datetime_now = datetime.datetime.now().strftime('%d.%m.%Y %H:%M')
-            message = f'[{datetime_now}] {data.decode()}'
+            press_release = f'[{datetime_now}] {chat_mesage.decode()}'
             async with aiofiles.open(args.history, 'a') as f:
-                await f.write(message)
+                await f.write(press_release)
 
-            print(message)
+            print(press_release)
     finally:
         writer.close()
         await writer.wait_closed()

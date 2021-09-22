@@ -7,28 +7,28 @@ import json
 import os
 import re
 
-async def read_data(reader):
-    data = await reader.readline()
-    data = data.decode()
-    logger.debug(data)
-    return data
+async def read_from_chat(reader):
+    chat_msg = await reader.readline()
+    chat_msg = chat_msg.decode()
+    logger.debug(chat_msg)
+    return chat_msg
 
 
 async def register(host, port, nickname):
     try:
         reader, writer = await asyncio.open_connection(host, port)
 
-        await read_data(reader)
+        await read_from_chat(reader)
 
         writer.write('\n'.encode())
         await writer.drain()
 
-        await read_data(reader)
+        await read_from_chat(reader)
 
         writer.write(f'{nickname}\n'.encode())
         await writer.drain()
 
-        access_data = await read_data(reader)
+        access_data = await read_from_chat(reader)
         async with aiofiles.open('.minechat_access', 'w') as f:
             await f.write(access_data)
 
@@ -38,22 +38,22 @@ async def register(host, port, nickname):
 
 
 async def authorise(reader, writer):
-    await read_data(reader)
+    await read_from_chat(reader)
 
     try:
         async with aiofiles.open('.minechat_access', 'r') as f:
-            data = await f.read()
+            auth_json = await f.read()
 
     except FileNotFoundError:
         print('Вы не авторизованы. Отправлять сообщения в чат могут только авторизованные пользователи')
         return
 
-    access_token = json.loads(data)['account_hash']
+    access_token = json.loads(auth_json)['account_hash']
 
     writer.write(f'{access_token}\n'.encode())
     await writer.drain()
 
-    msg = await read_data(reader)
+    msg = await read_from_chat(reader)
     if json.loads(msg) is None:
         print('Неизвестный токен. Проверьте его или зарегистрируйте заново.')
 
@@ -63,14 +63,14 @@ async def submit_message(reader, writer, message):
     await writer.drain()
 
 
-async def main(args):
+async def main(host, port, message, reg):
     if args.reg:
-        await register(args.host, args.port, args.reg)
+        await register(host, port, reg)
 
     try:
-        reader, writer = await asyncio.open_connection(args.host, args.port)
+        reader, writer = await asyncio.open_connection(host, port)
         await authorise(reader, writer)
-        message = args.message.replace('\\n', '')
+        message = message.replace('\\n', '')
         await submit_message(reader, writer, message)
     finally:
         writer.close()
@@ -97,4 +97,4 @@ if __name__ == '__main__':
     logger = logging.getLogger('sender')
     logger.disabled = not args.logger
 
-    asyncio.run(main(args))
+    asyncio.run(main(args.host, args.port, args.message, args.reg))
